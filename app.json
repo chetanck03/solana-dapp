@@ -1,37 +1,59 @@
 {
   "expo": {
-    "name": "solana-dapp",
-    "slug": "solana-dapp",
+    "name": "Solana Wallet Tracker",
+    "slug": "solana-wallet-tracker",
     "version": "1.0.0",
-
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-
-    "experiments": {
-      "tsconfigPaths": true
-    },
-
-    "plugins": [],
-
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
-    "userInterfaceStyle": "light",
-
+    "userInterfaceStyle": "dark",
+    "scheme": "solana-wallet-tracker",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#111827"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.solana.wallettracker"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#111827"
+      },
+      "package": "com.solana.wallettracker",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d82c76a1-7ee2-48fd-8b1e-f4e0d6967e57"
       }
     }
   }

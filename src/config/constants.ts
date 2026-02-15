@@ -9,8 +9,8 @@ export const RPC_CONFIG = {
 };
 
 export const API_ENDPOINTS = {
-  jupiterPrice: process.env.EXPO_PUBLIC_JUPITER_PRICE_API || 'https://price.jup.ag/v4',
-  tokenList: process.env.EXPO_PUBLIC_TOKEN_LIST_URL || 'https://token.jup.ag/all',
+  jupiterPrice: process.env.EXPO_PUBLIC_JUPITER_PRICE_API || 'https://api.jup.ag/price/v2',
+  tokenList: process.env.EXPO_PUBLIC_TOKEN_LIST_URL || 'https://token.jup.ag/strict',
 };
 
 export const STORAGE_KEYS = {

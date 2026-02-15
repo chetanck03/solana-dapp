@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useWalletContext } from '../context/WalletContext';
 import { truncateAddress, formatSOL } from '../utils/validation';
 
@@ -50,6 +51,7 @@ export function HomeScreen({ navigation }: any) {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900" edges={['top']}>
+      {/* Header */}
       <View className="px-4 pb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View>
@@ -59,18 +61,20 @@ export function HomeScreen({ navigation }: any) {
           {wallets.length > 0 && (
             <TouchableOpacity
               onPress={handleReset}
-              className="bg-red-600 px-4 py-2 rounded-lg"
+              className="bg-red-600 px-3 py-2 rounded-lg flex-row items-center"
             >
-              <Text className="text-white font-semibold text-sm">Reset</Text>
+              <Ionicons name="trash-outline" size={18} color="#fff" />
+              <Text className="text-white font-semibold text-sm ml-1">Reset</Text>
             </TouchableOpacity>
           )}
         </View>
 
+        {/* Search Bar */}
         {wallets.length > 0 && (
           <View className="flex-row items-center bg-gray-800 rounded-xl px-4 py-3">
-            <Text className="text-gray-400 mr-2">🔍</Text>
+            <Ionicons name="search" size={20} color="#9CA3AF" />
             <TextInput
-              className="flex-1 text-white"
+              className="flex-1 text-white ml-3"
               placeholder="Search by nickname or address..."
               placeholderTextColor="#6B7280"
               value={searchQuery}
@@ -80,77 +84,103 @@ export function HomeScreen({ navigation }: any) {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Text className="text-gray-400 text-lg">✕</Text>
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
         )}
       </View>
 
+      {/* Wallet List */}
       <ScrollView
         className="flex-1 px-4"
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8B5CF6" />
         }
       >
         {wallets.length === 0 ? (
           <View className="items-center justify-center py-20">
-            <Text className="text-gray-400 text-lg">No wallets added yet</Text>
+            <Ionicons name="wallet-outline" size={64} color="#6B7280" />
+            <Text className="text-gray-400 text-lg mt-4">No wallets added yet</Text>
             <Text className="text-gray-500 text-sm mt-2">Tap + to add your first wallet</Text>
           </View>
         ) : filteredWallets.length === 0 ? (
           <View className="items-center justify-center py-20">
-            <Text className="text-gray-400 text-lg">No wallets found</Text>
+            <Ionicons name="search-outline" size={64} color="#6B7280" />
+            <Text className="text-gray-400 text-lg mt-4">No wallets found</Text>
             <Text className="text-gray-500 text-sm mt-2">Try a different search term</Text>
           </View>
         ) : (
-          filteredWallets.map((wallet) => (
-            <TouchableOpacity
-              key={wallet.address}
-              className="bg-gray-800 rounded-2xl p-4 mb-3"
-              onPress={() => navigation.navigate('WalletDetail', { address: wallet.address })}
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <View className="flex-row items-center">
-                    <View
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: wallet.color || '#8B5CF6' }}
-                    />
-                    <Text className="text-white font-semibold text-lg">
-                      {wallet.nickname || truncateAddress(wallet.address)}
-                    </Text>
+          <>
+            {filteredWallets.map((wallet, index) => {
+              const walletIndex = wallets.findIndex(w => w.address === wallet.address) + 1;
+              return (
+                <TouchableOpacity
+                  key={wallet.address}
+                  className="bg-gray-800 rounded-2xl p-4 mb-3"
+                  onPress={() => navigation.navigate('WalletDetail', { address: wallet.address })}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1 flex-row items-center">
+                      {/* Numbered Badge */}
+                      <View
+                        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                        style={{ backgroundColor: wallet.color || '#8B5CF6' }}
+                      >
+                        <Text className="text-white font-bold text-lg">
+                          {walletIndex}
+                        </Text>
+                      </View>
+                      
+                      <View className="flex-1">
+                        <Text className="text-white font-semibold text-lg">
+                          {wallet.nickname || truncateAddress(wallet.address)}
+                        </Text>
+                        <Text className="text-gray-400 text-sm mt-1">
+                          {truncateAddress(wallet.address, 6)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="items-end">
+                      <Text className="text-white font-bold text-xl">
+                        {formatSOL(wallet.balance.lamports)} SOL
+                      </Text>
+                      <Text className="text-gray-400 text-sm mt-1">
+                        {wallet.tokens.length} tokens
+                      </Text>
+                    </View>
                   </View>
-                  <Text className="text-gray-400 text-sm mt-1">
-                    {truncateAddress(wallet.address, 6)}
-                  </Text>
-                </View>
+                </TouchableOpacity>
+              );
+            })}
 
-                <View className="items-end">
-                  <Text className="text-white font-bold text-xl">
-                    {formatSOL(wallet.balance.lamports)} SOL
-                  </Text>
-                  <Text className="text-gray-400 text-sm mt-1">
-                    {wallet.tokens.length} tokens
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-
-        {searchQuery && filteredWallets.length > 0 && (
-          <Text className="text-gray-500 text-center py-4">
-            Showing {filteredWallets.length} of {wallets.length} wallets
-          </Text>
+            {searchQuery && filteredWallets.length > 0 && (
+              <Text className="text-gray-500 text-center py-4 mb-20">
+                Showing {filteredWallets.length} of {wallets.length} wallets
+              </Text>
+            )}
+            
+            {/* Bottom padding for FAB */}
+            <View className="h-24" />
+          </>
         )}
       </ScrollView>
 
+      {/* Floating Action Button */}
       <TouchableOpacity
-        className="absolute bottom-8 right-8 bg-purple-600 w-16 h-16 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-8 right-8 bg-purple-600 w-16 h-16 rounded-full items-center justify-center"
         onPress={() => navigation.navigate('AddWallet')}
+        style={{
+          shadowColor: '#8B5CF6',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
       >
-        <Text className="text-white text-3xl font-light">+</Text>
+        <Ionicons name="add" size={36} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );

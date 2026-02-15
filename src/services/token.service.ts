@@ -1,4 +1,4 @@
-// Token metadata service
+// Token metadata service - Simplified
 
 import { API_ENDPOINTS, STORAGE_KEYS, CACHE_DURATION } from '../config/constants';
 import type { TokenMetadata } from '../types/solana';
@@ -10,7 +10,7 @@ class TokenService {
   private loading = false;
 
   /**
-   * Load token list from Jupiter
+   * Load token list from cache or fetch
    */
   async loadTokenList(): Promise<void> {
     if (this.initialized || this.loading) return;
@@ -21,50 +21,49 @@ class TokenService {
       // Try to load from cache first
       const cached = await AsyncStorage.getItem(STORAGE_KEYS.tokenCache);
       if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          this.tokenMap = new Map(Object.entries(data));
-          this.initialized = true;
-          this.loading = false;
-          console.log('Token list loaded from cache');
-          return;
-        }
+        const { data } = JSON.parse(cached);
+        this.tokenMap = new Map(Object.entries(data));
+        this.initialized = true;
+        console.log('Token metadata loaded from cache');
+        this.loading = false;
+        return;
       }
 
-      // Fetch fresh data with timeout
+      // Try to fetch once (silently fail if network unavailable)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(API_ENDPOINTS.tokenList, {
         signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
       });
       
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch token list: ${response.status}`);
+      if (response.ok) {
+        const tokens: TokenMetadata[] = await response.json();
+        
+        if (Array.isArray(tokens) && tokens.length > 0) {
+          this.tokenMap.clear();
+          tokens.forEach((token) => {
+            this.tokenMap.set(token.address, token);
+          });
+
+          // Cache the data
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.tokenCache,
+            JSON.stringify({
+              data: Object.fromEntries(this.tokenMap),
+              timestamp: Date.now(),
+            })
+          );
+
+          this.initialized = true;
+          console.log('Token metadata loaded:', tokens.length, 'tokens');
+        }
       }
-
-      const tokens: TokenMetadata[] = await response.json();
-      
-      tokens.forEach((token) => {
-        this.tokenMap.set(token.address, token);
-      });
-
-      // Cache the data
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.tokenCache,
-        JSON.stringify({
-          data: Object.fromEntries(this.tokenMap),
-          timestamp: Date.now(),
-        })
-      );
-
-      this.initialized = true;
-      console.log(`Token list loaded: ${tokens.length} tokens`);
     } catch (error) {
-      console.log('Token list loading failed (app will work without metadata):', error instanceof Error ? error.message : 'Unknown error');
-      // Don't throw - app should work without token metadata
+      // Silently fail - app works without metadata
     } finally {
       this.loading = false;
     }
@@ -101,6 +100,20 @@ class TokenService {
         token.symbol.toLowerCase().includes(lowerQuery) ||
         token.name.toLowerCase().includes(lowerQuery)
     );
+  }
+
+  /**
+   * Check if token list is loaded
+   */
+  isLoaded(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Get total number of tokens loaded
+   */
+  getTokenCount(): number {
+    return this.tokenMap.size;
   }
 }
 

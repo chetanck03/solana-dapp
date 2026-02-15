@@ -1,9 +1,12 @@
 // Wallet detail screen
 
 import React, { useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useWallet } from '../hooks/useWallet';
+import { tokenService } from '../services/token.service';
 import { truncateAddress, formatSOL, formatDate } from '../utils/validation';
 
 export function WalletDetailScreen({ route, navigation }: any) {
@@ -15,6 +18,21 @@ export function WalletDetailScreen({ route, navigation }: any) {
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied!', `${label} copied to clipboard`);
+  };
+
+  const openInExplorer = (address: string) => {
+    const url = `https://solscan.io/account/${address}`;
+    Linking.openURL(url).catch(err => console.error('Failed to open URL:', err));
+  };
+
+  const openTransactionInExplorer = (signature: string) => {
+    const url = `https://solscan.io/tx/${signature}`;
+    Linking.openURL(url).catch(err => console.error('Failed to open URL:', err));
   };
 
   if (loading && !wallet) {
@@ -45,8 +63,29 @@ export function WalletDetailScreen({ route, navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()} className="mb-4">
           <Text className="text-purple-500 text-lg">← Back</Text>
         </TouchableOpacity>
-        <Text className="text-2xl font-bold text-white">{wallet.nickname || 'Wallet'}</Text>
-        <Text className="text-gray-400 mt-1">{truncateAddress(wallet.address, 8)}</Text>
+        
+        <Text className="text-2xl font-bold text-white mb-2">{wallet.nickname || 'Wallet'}</Text>
+        
+        {/* Wallet Address with Copy and Explorer */}
+        <View className="flex-row items-center justify-between bg-gray-800 rounded-xl p-3 mb-4">
+          <Text className="text-gray-400 flex-1 font-mono text-sm">{truncateAddress(wallet.address, 8)}</Text>
+          <View className="flex-row">
+            <TouchableOpacity
+              onPress={() => copyToClipboard(wallet.address, 'Wallet address')}
+              className="bg-purple-600 px-3 py-2 rounded-lg mr-2 flex-row items-center"
+            >
+              <Ionicons name="copy-outline" size={16} color="#fff" />
+              <Text className="text-white text-xs ml-1">Copy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => openInExplorer(wallet.address)}
+              className="bg-blue-600 px-3 py-2 rounded-lg flex-row items-center"
+            >
+              <Ionicons name="open-outline" size={16} color="#fff" />
+              <Text className="text-white text-xs ml-1">Explorer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       <ScrollView
@@ -69,19 +108,44 @@ export function WalletDetailScreen({ route, navigation }: any) {
               <Text className="text-gray-400">No tokens found</Text>
             </View>
           ) : (
-            wallet.tokens.map((token, index) => (
-              <View key={index} className="bg-gray-800 rounded-xl p-4 mb-2">
-                <View className="flex-row justify-between items-center">
+            wallet.tokens.map((token, index) => {
+              const metadata = tokenService.getTokenMetadata(token.mint);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  className="bg-gray-800 rounded-xl p-4 mb-2 flex-row items-center"
+                  onPress={() => navigation.navigate('TokenDetail', { token, walletAddress: wallet.address })}
+                >
+                  {metadata?.logoURI ? (
+                    <Image
+                      source={{ uri: metadata.logoURI }}
+                      style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
+                      onError={() => console.log('Failed to load image for:', metadata.symbol)}
+                    />
+                  ) : (
+                    <View className="w-10 h-10 rounded-full bg-purple-600 items-center justify-center mr-3">
+                      <Text className="text-white font-bold">
+                        {metadata?.symbol?.[0] || token.mint.slice(0, 1).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
                   <View className="flex-1">
-                    <Text className="text-white font-semibold">{truncateAddress(token.mint, 6)}</Text>
+                    <Text className="text-white font-semibold">
+                      {metadata?.symbol || truncateAddress(token.mint, 6)}
+                    </Text>
                     <Text className="text-gray-400 text-sm mt-1">
-                      {token.decimals} decimals
+                      {metadata?.name || `${token.decimals} decimals`}
                     </Text>
                   </View>
-                  <Text className="text-white font-bold">{token.uiAmount.toFixed(4)}</Text>
-                </View>
-              </View>
-            ))
+                  <View className="items-end">
+                    <Text className="text-white font-bold">
+                      {token.uiAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    </Text>
+                    <Text className="text-gray-400 text-xs mt-1">→</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
 
@@ -96,7 +160,11 @@ export function WalletDetailScreen({ route, navigation }: any) {
             </View>
           ) : (
             wallet.transactions.map((tx) => (
-              <View key={tx.signature} className="bg-gray-800 rounded-xl p-4 mb-2">
+              <TouchableOpacity
+                key={tx.signature}
+                className="bg-gray-800 rounded-xl p-4 mb-2"
+                onPress={() => openTransactionInExplorer(tx.signature)}
+              >
                 <View className="flex-row justify-between items-start">
                   <View className="flex-1">
                     <Text className="text-white font-mono text-sm">
@@ -105,6 +173,7 @@ export function WalletDetailScreen({ route, navigation }: any) {
                     <Text className="text-gray-400 text-xs mt-1">
                       {tx.blockTime ? formatDate(tx.blockTime) : 'Pending'}
                     </Text>
+                    <Text className="text-purple-400 text-xs mt-1">Tap to view on Solscan →</Text>
                   </View>
                   <View
                     className={`px-2 py-1 rounded ${tx.err ? 'bg-red-900' : 'bg-green-900'}`}
@@ -114,7 +183,7 @@ export function WalletDetailScreen({ route, navigation }: any) {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
